@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZOI LIMO - Interactive Manifest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            line-height: 1.3;
+            padding: 0.3in;
+            background-color: #f5f5f5;
+        }
+        
+        .action-bar {
+            background-color: #2c3e50;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .action-bar button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11pt;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .action-bar button:hover {
+            background-color: #2980b9;
+        }
+        
+        .action-bar button.success {
+            background-color: #27ae60;
+        }
+        
+        .action-bar button.success:hover {
+            background-color: #229954;
+        }
+        
+        .action-bar button.danger {
+            background-color: #e74c3c;
+        }
+        
+        .action-bar button.danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .action-bar .status {
+            color: #ecf0f1;
+            margin-left: auto;
+            font-size: 10pt;
+        }
+        
+        .page {
+            width: 7.9in;
+            min-height: 10.4in;
+            margin: 0 auto;
+            background-color: white;
+            padding: 0.3in;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* Header */
+        .header {
+            border-bottom: 3px solid #3d5a7a;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        
+        .header-left {
+            float: left;
+            width: 50%;
+        }
+        
+        .header-right {
+            float: right;
+            width: 50%;
+            text-align: right;
+            font-size: 9pt;
+            color: #555;
+            line-height: 1.4;
+        }
+        
+        .logo {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            background-color: #3d5a7a;
+            border-radius: 50%;
+            color: white;
+            text-align: center;
+            line-height: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            vertical-align: middle;
+            margin-right: 12px;
+        }
+        
+        .company-name {
+            display: inline-block;
+            font-size: 24px;
+            font-weight: bold;
+            color: #3d5a7a;
+            letter-spacing: 6px;
+            vertical-align: middle;
+        }
+        
+        .clearfix::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+        
+        /* Booking Reference */
+        .booking-ref {
+            background-color: #f0f0f0;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 9pt;
+            font-weight: bold;
+            overflow: hidden;
+        }
+        
+        .booking-ref-left {
+            float: left;
+        }
+        
+        .booking-ref-right {
+            float: right;
+        }
+        
+        /* Section Title */
+        .section-title {
+            background-color: #3d5a7a;
+            color: white;
+            padding: 6px 10px;
+            font-size: 10pt;
+            font-weight: bold;
+            margin: 14px 0 8px 0;
+            text-transform: uppercase;
+        }
+        
+        /* Form Table */
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        
+        .form-table td {
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+        
+        .form-label {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #3d5a7a;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 3px;
+        }
+        
+        .form-input {
+            width: 100%;
+            border: none;
+            border-bottom: 1.5px solid #999;
+            padding: 5px 0;
+            font-size: 10pt;
+            height: 22px;
+            background-color: transparent;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-bottom: 2px solid #3d5a7a;
+        }
+        
+        /* Checkbox */
+        .checkbox-group {
+            font-size: 9pt;
+            white-space: nowrap;
+        }
+        
+        .checkbox-item {
+            display: inline-block;
+            margin-right: 12px;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 12px;
+            height: 12px;
+            vertical-align: middle;
+            margin-right: 4px;
+            cursor: pointer;
+        }
+        
+        /* Payment Section */
+        .payment-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        
+        .payment-table td {
+            padding: 4px 6px;
+            font-size: 9pt;
+        }
+        
+        .payment-label {
+            color: #555;
+            text-align: right;
+            padding-right: 10px;
+        }
+        
+        .payment-input {
+            border: none;
+            border-bottom: 1.5px solid #999;
+            width: 85px;
+            text-align: right;
+            padding: 4px 0;
+            font-size: 9pt;
+        }
+        
+        .payment-input:focus {
+            outline: none;
+            border-bottom: 2px solid #3d5a7a;
+        }
+        
+        .total-box {
+            border: 2px solid #3d5a7a;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .total-row {
+            margin-bottom: 6px;
+            font-size: 9pt;
+        }
+        
+        .total-row-final {
+            border-top: 2px solid #3d5a7a;
+            padding-top: 8px;
+            margin-top: 8px;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        
+        .total-input {
+            border: none;
+            border-bottom: 1.5px solid #333;
+            width: 100px;
+            text-align: right;
+            font-size: 9pt;
+        }
+        
+        .total-input:focus {
+            outline: none;
+            border-bottom: 2px solid #3d5a7a;
+        }
+        
+        .total-input-final {
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        
+        /* Terms */
+        .terms-box {
+            background-color: #f9f9f9;
+            border: 1.5px solid #ccc;
+            padding: 10px 12px;
+            margin: 12px 0;
+            font-size: 7pt;
+            line-height: 1.4;
+        }
+        
+        .terms-col {
+            width: 48%;
+            display: inline-block;
+            vertical-align: top;
+            padding-right: 12px;
+        }
+        
+        /* Signatures */
+        .signature-table {
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .signature-table td {
+            width: 50%;
+            padding: 0 15px;
+            text-align: center;
+        }
+        
+        .signature-label {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #3d5a7a;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .signature-line {
+            border-bottom: 2px solid #333;
+            margin: 0 20px 8px 20px;
+        }
+        
+        .signature-details {
+            font-size: 8pt;
+            color: #666;
+            text-align: left;
+            margin: 0 20px;
+        }
+        
+        .signature-details div {
+            margin-bottom: 2px;
+        }
+        
+        .signature-input {
+            border: none;
+            border-bottom: 1px solid #999;
+            width: 100%;
+            font-size: 8pt;
+        }
+        
+        .signature-input:focus {
+            outline: none;
+            border-bottom: 2px solid #3d5a7a;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1.5px solid #ddd;
+            font-size: 7pt;
+            color: #888;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #3d5a7a;
+        }
+        
+        .modal-content label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .modal-content input,
+        .modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 11pt;
+        }
+        
+        .modal-content textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .modal-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11pt;
+        }
+        
+        .modal-buttons .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .modal-buttons .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        @media print {
+            .action-bar {
+                display: none;
+            }
+            
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            
+            .page {
+                box-shadow: none;
+                margin: 0;
+                padding: 0.2in;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button onclick="saveData()" class="success">💾 Save Form</button>
+        <button onclick="loadData()">📂 Load Saved</button>
+        <button onclick="clearForm()" class="danger">🗑️ Clear All</button>
+        <button onclick="openEmailModal()">📧 Send Email</button>
+        <button onclick="openSMSModal()">📱 Send SMS</button>
+        <button onclick="printForm()">🖨️ Print/PDF</button>
+        <span class="status" id="status">Ready</span>
+    </div>
+
+    <div class="page" id="manifest">
+        <!-- Header -->
+        <div class="header clearfix">
+            <div class="header-left">
+                <span class="logo">ZOI</span>
+                <span class="company-name">ZOI LIMO</span>
+            </div>
+            <div class="header-right">
+                <strong>SADOK TSEGA</strong><br>
+                832-844-8660<br>
+                contact@zoilimo.com<br>
+                www.zoilimo.com
+            </div>
+        </div>
+        
+        <!-- Booking Reference -->
+        <div class="booking-ref clearfix">
+            <div class="booking-ref-left">
+                BOOKING #: <input type="text" class="form-input" id="bookingNumber" style="width: 150px; display: inline-block; border-bottom: 1px solid #999;">
+            </div>
+            <div class="booking-ref-right">
+                DATE CREATED: <input type="date" class="form-input" id="dateCreated" style="width: 150px; display: inline-block; border-bottom: 1px solid #999;">
+            </div>
+        </div>
+        
+        <!-- Service Details -->
+        <div class="section-title">Service Details</div>
+        <table class="form-table">
+            <tr>
+                <td width="50%">
+                    <span class="form-label">Service Type</span>
+                    <div class="checkbox-group">
+                        <span class="checkbox-item"><input type="checkbox" id="serviceAirport"> Airport Transfer</span>
+                        <span class="checkbox-item"><input type="checkbox" id="serviceP2P"> Point to Point</span>
+                        <span class="checkbox-item"><input type="checkbox" id="serviceHourly"> Hourly Charter</span>
+                    </div>
+                </td>
+                <td width="50%">
+                    <span class="form-label">Trip Type</span>
+                    <div class="checkbox-group">
+                        <span class="checkbox-item"><input type="checkbox" id="tripOneWay"> One Way</span>
+                        <span class="checkbox-item"><input type="checkbox" id="tripRoundTrip"> Round Trip</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Customer Information -->
+        <div class="section-title">Customer Information</div>
+        <table class="form-table">
+            <tr>
+                <td width="33%">
+                    <span class="form-label">First Name</span>
+                    <input type="text" class="form-input" id="firstName">
+                </td>
+                <td width="33%">
+                    <span class="form-label">Last Name</span>
+                    <input type="text" class="form-input" id="lastName">
+                </td>
+                <td width="34%">
+                    <span class="form-label">Mobile Phone</span>
+                    <input type="tel" class="form-input" id="mobilePhone">
+                </td>
+            </tr>
+            <tr>
+                <td width="33%">
+                    <span class="form-label">Email Address</span>
+                    <input type="email" class="form-input" id="email">
+                </td>
+                <td width="33%">
+                    <span class="form-label">Account/Company Name</span>
+                    <input type="text" class="form-input" id="companyName">
+                </td>
+                <td width="34%">
+                    <span class="form-label">Number of Passengers</span>
+                    <input type="number" class="form-input" id="passengers">
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Schedule & Route -->
+        <div class="section-title">Schedule & Route Information</div>
+        <table class="form-table">
+            <tr>
+                <td width="25%">
+                    <span class="form-label">Pickup Date</span>
+                    <input type="date" class="form-input" id="pickupDate">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Pickup Time</span>
+                    <input type="time" class="form-input" id="pickupTime">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Return Date</span>
+                    <input type="date" class="form-input" id="returnDate">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Return Time</span>
+                    <input type="time" class="form-input" id="returnTime">
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <span class="form-label">Pickup Address/Location</span>
+                    <input type="text" class="form-input" id="pickupLocation">
+                </td>
+                <td colspan="2">
+                    <span class="form-label">Drop-off Address/Location</span>
+                    <input type="text" class="form-input" id="dropoffLocation">
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Flight Information -->
+        <div class="section-title">Flight Information (Airport Transfers)</div>
+        <table class="form-table">
+            <tr>
+                <td width="25%">
+                    <span class="form-label">Airline</span>
+                    <input type="text" class="form-input" id="airline">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Flight Number</span>
+                    <input type="text" class="form-input" id="flightNumber">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Terminal</span>
+                    <input type="text" class="form-input" id="terminal">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Arrival/Departure Time</span>
+                    <input type="time" class="form-input" id="flightTime">
+                </td>
+            </tr>
+            <tr>
+                <td width="25%">
+                    <span class="form-label">Number of Luggage</span>
+                    <input type="number" class="form-input" id="luggage">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Vehicle Type</span>
+                    <input type="text" class="form-input" id="vehicleType">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Vehicle Plate</span>
+                    <input type="text" class="form-input" id="vehiclePlate">
+                </td>
+                <td width="25%">
+                    <span class="form-label">Driver Name</span>
+                    <input type="text" class="form-input" id="driverName">
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Payment Details -->
+        <div class="section-title">Payment Details</div>
+        <table class="payment-table">
+            <tr>
+                <td width="33%" valign="top">
+                    <table width="100%">
+                        <tr>
+                            <td class="payment-label">Base Fare:</td>
+                            <td><input type="number" class="payment-input" id="baseFare" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="payment-label">Hours/Distance:</td>
+                            <td><input type="text" class="payment-input" id="hoursDistance"></td>
+                        </tr>
+                        <tr>
+                            <td class="payment-label">Waiting Time:</td>
+                            <td><input type="number" class="payment-input" id="waitingTime" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="payment-label">Extra Stop(s):</td>
+                            <td><input type="number" class="payment-input" id="extraStops" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                    </table>
+                </td>
+                <td width="33%" valign="top">
+                    <table width="100%">
+                        <tr>
+                            <td class="payment-label">Tolls:</td>
+                            <td><input type="number" class="payment-input" id="tolls" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="payment-label">Airport Parking:</td>
+                            <td><input type="number" class="payment-input" id="parking" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="payment-label">Gratuity (___%):</td>
+                            <td><input type="number" class="payment-input" id="gratuity" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="payment-label">Additional:</td>
+                            <td><input type="number" class="payment-input" id="additional" step="0.01" oninput="calculateTotal()"></td>
+                        </tr>
+                    </table>
+                </td>
+                <td width="34%" valign="top">
+                    <div class="total-box">
+                        <div class="total-row">
+                            Subtotal: <input type="text" class="total-input" id="subtotal" readonly>
+                        </div>
+                        <div class="total-row">
+                            Tax: <input type="number" class="total-input" id="tax" step="0.01" oninput="calculateTotal()">
+                        </div>
+                        <div class="total-row-final">
+                            TOTAL: <input type="text" class="total-input total-input-final" id="total" readonly>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        
+        <table class="form-table" style="margin-top: 8px;">
+            <tr>
+                <td width="50%">
+                    <span class="form-label">Payment Method</span>
+                    <div class="checkbox-group">
+                        <span class="checkbox-item"><input type="checkbox" id="paymentCash"> Cash</span>
+                        <span class="checkbox-item"><input type="checkbox" id="paymentCard"> Credit Card</span>
+                        <span class="checkbox-item"><input type="checkbox" id="paymentCorporate"> Corporate</span>
+                        <span class="checkbox-item"><input type="checkbox" id="paymentInvoice"> Invoice</span>
+                    </div>
+                </td>
+                <td width="50%">
+                    <span class="form-label">Payment Status</span>
+                    <div class="checkbox-group">
+                        <span class="checkbox-item"><input type="checkbox" id="statusPaid"> Paid in Full</span>
+                        <span class="checkbox-item"><input type="checkbox" id="statusDeposit"> Deposit Paid</span>
+                        <span class="checkbox-item"><input type="checkbox" id="statusBalance"> Balance Due</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Terms and Conditions -->
+        <div class="terms-box">
+            <div class="terms-col">
+                <strong>TERMS AND CONDITIONS:</strong><br>
+                <strong>1. Cancellation Policy:</strong> Cancellations made less than 24 hours prior to scheduled pickup time will incur a cancellation fee of 50% of the total fare. No-shows will be charged 100% of the total fare.<br>
+                <strong>2. Wait Time:</strong> For airport pickups, 60 minutes of complimentary wait time is provided from actual flight landing time (for domestic flights) and 90 minutes (for international flights). Point-to-point services include 15 minutes of complimentary wait time. Additional waiting time will be charged at the rate of $1 per minute.<br>
+                <strong>3. Gratuity:</strong> Gratuity is not included in the base fare and is at the customer's discretion, though 15-20% is customary for satisfactory service.
+            </div><div class="terms-col">
+                <strong>4. Liability:</strong> ZOI LIMO is not responsible for delays caused by traffic, weather conditions, or circumstances beyond our control. We are not liable for personal belongings left in the vehicle.<br>
+                <strong>5. Conduct:</strong> ZOI LIMO reserves the right to refuse service to passengers who are intoxicated, disruptive, or whose conduct may endanger the driver or vehicle. No smoking or illegal substances are permitted in vehicles.<br>
+                <strong>6. Vehicle Assignment:</strong> While we make every effort to provide the requested vehicle type, ZOI LIMO reserves the right to substitute with a comparable or upgraded vehicle if necessary.<br>
+                By signing below, both parties acknowledge that they have read, understood, and agree to be bound by these terms and conditions.
+            </div>
+        </div>
+        
+        <!-- Signatures -->
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <span class="signature-label">CUSTOMER SIGNATURE</span>
+                    <div class="signature-line"></div>
+                    <div class="signature-details">
+                        <div>Print Name: <input type="text" class="signature-input" id="customerName"></div>
+                        <div>Date: <input type="date" class="signature-input" id="customerDate"></div>
+                    </div>
+                </td>
+                <td>
+                    <span class="signature-label">DRIVER SIGNATURE</span>
+                    <div class="signature-line"></div>
+                    <div class="signature-details">
+                        <div>Print Name: <input type="text" class="signature-input" id="driverSignName"></div>
+                        <div>Date: <input type="date" class="signature-input" id="driverDate"></div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Footer -->
+        <div class="footer">
+            Thank you for choosing ZOI LIMO! For questions: 832-844-8660 | contact@zoilimo.com | © 2025 ZOI LIMO
+        </div>
+    </div>
+
+    <!-- Email Modal -->
+    <div id="emailModal" class="modal">
+        <div class="modal-content">
+            <h2>📧 Send via Email</h2>
+            <label>Recipient Email:</label>
+            <input type="email" id="recipientEmail" placeholder="customer@example.com">
+            
+            <label>Subject:</label>
+            <input type="text" id="emailSubject" value="ZOI LIMO - Transportation Manifest">
+            
+            <label>Message:</label>
+            <textarea id="emailMessage">Please find your ZOI LIMO transportation manifest details below.</textarea>
+            
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeEmailModal()">Cancel</button>
+                <button class="btn-primary" onclick="sendEmail()">Send Email</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SMS Modal -->
+    <div id="smsModal" class="modal">
+        <div class="modal-content">
+            <h2>📱 Send via SMS</h2>
+            <label>Recipient Phone Number:</label>
+            <input type="tel" id="recipientPhone" placeholder="+1-555-555-5555">
+            
+            <p style="margin: 15px 0; color: #555; font-size: 10pt;">
+                <strong>Note:</strong> This will open your default SMS app with manifest details pre-filled.
+            </p>
+            
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeSMSModal()">Cancel</button>
+                <button class="btn-primary" onclick="sendSMS()">Open SMS App</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-save functionality
+        let autoSaveTimeout;
+        document.querySelectorAll('input, textarea').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(() => {
+                    autoSave();
+                }, 2000);
+            });
+        });
+
+        function autoSave() {
+            saveData(true);
+        }
+
+        // Calculate total automatically
+        function calculateTotal() {
+            const baseFare = parseFloat(document.getElementById('baseFare').value) || 0;
+            const waitingTime = parseFloat(document.getElementById('waitingTime').value) || 0;
+            const extraStops = parseFloat(document.getElementById('extraStops').value) || 0;
+            const tolls = parseFloat(document.getElementById('tolls').value) || 0;
+            const parking = parseFloat(document.getElementById('parking').value) || 0;
+            const gratuity = parseFloat(document.getElementById('gratuity').value) || 0;
+            const additional = parseFloat(document.getElementById('additional').value) || 0;
+            
+            const subtotal = baseFare + waitingTime + extraStops + tolls + parking + gratuity + additional;
+            const tax = parseFloat(document.getElementById('tax').value) || 0;
+            const total = subtotal + tax;
+            
+            document.getElementById('subtotal').value = '$' + subtotal.toFixed(2);
+            document.getElementById('total').value = '$' + total.toFixed(2);
+        }
+
+        // Save form data
+        function saveData(silent = false) {
+            const formData = {
+                bookingNumber: document.getElementById('bookingNumber').value,
+                dateCreated: document.getElementById('dateCreated').value,
+                serviceAirport: document.getElementById('serviceAirport').checked,
+                serviceP2P: document.getElementById('serviceP2P').checked,
+                serviceHourly: document.getElementById('serviceHourly').checked,
+                tripOneWay: document.getElementById('tripOneWay').checked,
+                tripRoundTrip: document.getElementById('tripRoundTrip').checked,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                mobilePhone: document.getElementById('mobilePhone').value,
+                email: document.getElementById('email').value,
+                companyName: document.getElementById('companyName').value,
+                passengers: document.getElementById('passengers').value,
+                pickupDate: document.getElementById('pickupDate').value,
+                pickupTime: document.getElementById('pickupTime').value,
+                returnDate: document.getElementById('returnDate').value,
+                returnTime: document.getElementById('returnTime').value,
+                pickupLocation: document.getElementById('pickupLocation').value,
+                dropoffLocation: document.getElementById('dropoffLocation').value,
+                airline: document.getElementById('airline').value,
+                flightNumber: document.getElementById('flightNumber').value,
+                terminal: document.getElementById('terminal').value,
+                flightTime: document.getElementById('flightTime').value,
+                luggage: document.getElementById('luggage').value,
+                vehicleType: document.getElementById('vehicleType').value,
+                vehiclePlate: document.getElementById('vehiclePlate').value,
+                driverName: document.getElementById('driverName').value,
+                baseFare: document.getElementById('baseFare').value,
+                hoursDistance: document.getElementById('hoursDistance').value,
+                waitingTime: document.getElementById('waitingTime').value,
+                extraStops: document.getElementById('extraStops').value,
+                tolls: document.getElementById('tolls').value,
+                parking: document.getElementById('parking').value,
+                gratuity: document.getElementById('gratuity').value,
+                additional: document.getElementById('additional').value,
+                tax: document.getElementById('tax').value,
+                paymentCash: document.getElementById('paymentCash').checked,
+                paymentCard: document.getElementById('paymentCard').checked,
+                paymentCorporate: document.getElementById('paymentCorporate').checked,
+                paymentInvoice: document.getElementById('paymentInvoice').checked,
+                statusPaid: document.getElementById('statusPaid').checked,
+                statusDeposit: document.getElementById('statusDeposit').checked,
+                statusBalance: document.getElementById('statusBalance').checked,
+                customerName: document.getElementById('customerName').value,
+                customerDate: document.getElementById('customerDate').value,
+                driverSignName: document.getElementById('driverSignName').value,
+                driverDate: document.getElementById('driverDate').value
+            };
+            
+            localStorage.setItem('zoiLimoManifest', JSON.stringify(formData));
+            
+            if (!silent) {
+                showStatus('Form saved successfully!', 'success');
+            } else {
+                showStatus('Auto-saved', 'info');
+            }
+        }
+
+        // Load form data
+        function loadData() {
+            const savedData = localStorage.getItem('zoiLimoManifest');
+            if (savedData) {
+                const formData = JSON.parse(savedData);
+                
+                Object.keys(formData).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = formData[key];
+                        } else {
+                            element.value = formData[key];
+                        }
+                    }
+                });
+                
+                calculateTotal();
+                showStatus('Form loaded successfully!', 'success');
+            } else {
+                showStatus('No saved data found', 'error');
+            }
+        }
+
+        // Clear form
+        function clearForm() {
+            if (confirm('Are you sure you want to clear all form data?')) {
+                document.querySelectorAll('input').forEach(input => {
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+                document.querySelectorAll('textarea').forEach(textarea => {
+                    textarea.value = '';
+                });
+                calculateTotal();
+                showStatus('Form cleared', 'info');
+            }
+        }
+
+        // Email functionality
+        function openEmailModal() {
+            document.getElementById('emailModal').style.display = 'block';
+            const customerEmail = document.getElementById('email').value;
+            if (customerEmail) {
+                document.getElementById('recipientEmail').value = customerEmail;
+            }
+        }
+
+        function closeEmailModal() {
+            document.getElementById('emailModal').style.display = 'none';
+        }
+
+        function sendEmail() {
+            const recipient = document.getElementById('recipientEmail').value;
+            const subject = document.getElementById('emailSubject').value;
+            const message = document.getElementById('emailMessage').value;
+            
+            if (!recipient) {
+                alert('Please enter recipient email address');
+                return;
+            }
+            
+            const manifestSummary = generateManifestSummary();
+            const emailBody = encodeURIComponent(message + '\n\n' + manifestSummary);
+            const emailSubject = encodeURIComponent(subject);
+            
+            window.location.href = `mailto:${recipient}?subject=${emailSubject}&body=${emailBody}`;
+            
+            closeEmailModal();
+            showStatus('Email client opened', 'success');
+        }
+
+        // SMS functionality
+        function openSMSModal() {
+            document.getElementById('smsModal').style.display = 'block';
+            const customerPhone = document.getElementById('mobilePhone').value;
+            if (customerPhone) {
+                document.getElementById('recipientPhone').value = customerPhone;
+            }
+        }
+
+        function closeSMSModal() {
+            document.getElementById('smsModal').style.display = 'none';
+        }
+
+        function sendSMS() {
+            const recipient = document.getElementById('recipientPhone').value;
+            
+            if (!recipient) {
+                alert('Please enter recipient phone number');
+                return;
+            }
+            
+            const manifestSummary = generateManifestSummary(true);
+            const smsBody = encodeURIComponent(manifestSummary);
+            
+            // Try SMS link first, fall back to tel
+            window.location.href = `sms:${recipient}?body=${smsBody}`;
+            
+            closeSMSModal();
+            showStatus('SMS app opened', 'success');
+        }
+
+        // Generate manifest summary
+        function generateManifestSummary(short = false) {
+            const booking = document.getElementById('bookingNumber').value || 'N/A';
+            const customer = `${document.getElementById('firstName').value} ${document.getElementById('lastName').value}`;
+            const pickup = document.getElementById('pickupDate').value + ' ' + document.getElementById('pickupTime').value;
+            const from = document.getElementById('pickupLocation').value || 'N/A';
+            const to = document.getElementById('dropoffLocation').value || 'N/A';
+            const total = document.getElementById('total').value || '$0.00';
+            
+            if (short) {
+                return `ZOI LIMO Booking ${booking}\nCustomer: ${customer}\nPickup: ${pickup}\nFrom: ${from}\nTo: ${to}\nTotal: ${total}`;
+            }
+            
+            return `
+=== ZOI LIMO MANIFEST ===
+
+Booking #: ${booking}
+Customer: ${customer}
+Phone: ${document.getElementById('mobilePhone').value}
+Email: ${document.getElementById('email').value}
+
+SCHEDULE:
+Pickup Date/Time: ${pickup}
+From: ${from}
+To: ${to}
+
+VEHICLE:
+Type: ${document.getElementById('vehicleType').value || 'N/A'}
+Plate: ${document.getElementById('vehiclePlate').value || 'N/A'}
+Driver: ${document.getElementById('driverName').value || 'N/A'}
+
+PAYMENT:
+Total Amount: ${total}
+
+For questions: 832-844-8660
+Contact: contact@zoilimo.com
+            `;
+        }
+
+        // Print form
+        function printForm() {
+            window.print();
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            
+            setTimeout(() => {
+                status.textContent = 'Ready';
+            }, 3000);
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Set current date on load
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            if (!document.getElementById('dateCreated').value) {
+                document.getElementById('dateCreated').value = today;
+            }
+        }
+    </script>
+</body>
+</html>
