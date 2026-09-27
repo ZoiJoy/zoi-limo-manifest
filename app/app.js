@@ -4,6 +4,7 @@ import {
   paymentStatus, STATUS_LABELS, SERVICE_LABELS, TRIP_LABELS,
 } from './invoice.js';
 import * as db from './store.js';
+import { buildInvoicePDF, invoiceFileName } from './pdf.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -401,7 +402,7 @@ function renderDetail(b) {
     <div class="btn-grid" style="margin-bottom:14px">
       ${t.balance > 0 && b.status !== 'cancelled' ? `<button class="btn" id="recordPay">💵 Mark paid</button>` : ''}
       <a class="btn" href="#/edit/${b.id}">✏️ Edit</a>
-      ${inClaude ? '' : `<button class="btn" id="print">🖨️ Print / PDF</button>`}
+      <button class="btn" id="pdfBtn">📄 PDF invoice</button>
       ${b.status === 'booked' ? `<button class="btn" id="complete">✅ Mark completed</button>` : ''}
       <a class="btn" href="#/new/${b.id}">⧉ Book again</a>
       ${b.status !== 'cancelled' ? `<button class="btn danger" id="cancelBooking">Cancel ride</button>` : `<button class="btn" id="reinstate">Reinstate</button>`}
@@ -410,7 +411,7 @@ function renderDetail(b) {
   </div>
   <div class="invoice-frame">${renderInvoiceHTML(b, s)}</div>`;
 
-  if ($('#print')) $('#print').onclick = () => window.print();
+  $('#pdfBtn').onclick = () => savePDF(b);
   const setStatus = (status, msg) => () => {
     db.updateBooking(b.id, { status });
     toast(msg);
@@ -459,6 +460,44 @@ function openPaymentDialog(b, t) {
   };
 }
 
+// Hands the PDF to the phone's share sheet (Messages, Mail, WhatsApp...). Inside Claude, where sharing
+// is blocked, it saves the PDF to the phone instead so it can be attached. Returns true when handed off.
+async function sharePDF(b, intro) {
+  const s = state.settings;
+  const name = invoiceFileName(b);
+  const blob = buildInvoicePDF(b, s);
+  const file = new File([blob], name, { type: 'application/pdf' });
+
+  if (!inClaude && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: `Invoice #${b.number}`, text: intro });
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') return false;
+    }
+  }
+  if (inClaude) {
+    const downloads = await window.claude.use('downloads').catch(() => null);
+    if (!downloads) { toast('Saving files is not available here. Use the text option.', true); return false; }
+    try {
+      await downloads.save({ filename: name, data: blob });
+      toast('PDF saved. Attach it to your message from Files.');
+      return true;
+    } catch (err) {
+      if (err?.code !== 'declined') toast('Could not save the PDF.', true);
+      return false;
+    }
+  }
+  // Computers without a share sheet: download the file.
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('PDF downloaded.');
+  return true;
+}
+
 function openSendDialog(b, channel) {
   const s = state.settings;
   const isSms = channel === 'sms';
@@ -471,26 +510,33 @@ function openSendDialog(b, channel) {
   dialog.innerHTML = `
   <form method="dialog" id="sendForm">
     <h3>${isSms ? 'Text' : 'Email'} invoice #${esc(b.number)}</h3>
-    <label>${isSms ? 'Mobile number' : 'Email address'}
-      <input id="sendTo" name="to" type="${isSms ? 'tel' : 'email'}" value="${esc(to)}"></label>
-    ${isSms ? '' : `<label>Subject<input id="sendSubject" name="subject" value="${esc(subject)}"></label>`}
-    <label>Message<textarea id="sendMessage" name="message" rows="10">${esc(message)}</textarea></label>
-    <div class="btn-grid">
-      <button type="button" class="btn primary" id="copyMsg">📋 Copy invoice</button>
-      <a class="btn primary" id="openApp" href="#">Open ${app}</a>
+    <div class="send-to">
+      <div><small>${isSms ? 'Send to' : 'Email to'}</small><b id="sendTo">${esc(to || '—')}</b></div>
+      ${to ? `<button type="button" class="btn" id="copyTo">Copy</button>` : ''}
     </div>
-    <p class="hint">Tap <b>Copy invoice</b>, open ${app}, then paste it into your message to ${esc(to || 'the customer')}.${inClaude ? '' : ` Or tap <b>Open ${app}</b> to start the message with the invoice already filled in.`}</p>
+    <button type="button" class="btn primary block" id="sendPdf" style="min-height:56px;font-size:17px">📄 Send PDF invoice</button>
+    <p class="hint" style="margin:0">${inClaude
+      ? `Saves the PDF to your phone. Then open ${app}, start a message to ${esc(to || 'the customer')} and attach the PDF from Files. Installed on your home screen, the app sends the PDF straight to ${app}.`
+      : `Opens your share menu. Choose <b>${app}</b>, then pick ${esc(to || 'the customer')} as the recipient.`}</p>
+    <details>
+      <summary>Send as a plain text message instead</summary>
+      ${isSms ? '' : `<label>Subject<input id="sendSubject" name="subject" value="${esc(subject)}"></label>`}
+      <label>Message<textarea id="sendMessage" name="message" rows="8">${esc(message)}</textarea></label>
+      <div class="btn-grid">
+        <button type="button" class="btn" id="copyMsg">📋 Copy text</button>
+        <a class="btn" id="openApp" href="#">Open ${app}</a>
+      </div>
+    </details>
     <button class="btn block" value="close">Done</button>
   </form>`;
 
   const f = $('#sendForm');
   const link = $('#openApp');
   const refreshLink = () => {
-    const recipient = f.to.value.trim();
     const body = encodeURIComponent(f.message.value);
     link.href = isSms
-      ? `sms:${recipient.replace(/[^\d+]/g, '')}${isIOS ? '&' : '?'}body=${body}`
-      : `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(f.subject.value)}&body=${body}`;
+      ? `sms:${to.replace(/[^\d+]/g, '')}${isIOS ? '&' : '?'}body=${body}`
+      : `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(f.subject.value)}&body=${body}`;
   };
   f.addEventListener('input', refreshLink);
   refreshLink();
@@ -499,25 +545,47 @@ function openSendDialog(b, channel) {
   const markSent = () => {
     if (logged) return;
     logged = true;
-    db.logSend(b.id, channel, f.to.value.trim() || '(not entered)');
+    db.logSend(b.id, channel, to || '(not entered)');
   };
-
-  $('#copyMsg').onclick = async () => {
-    const text = isSms ? f.message.value : `Subject: ${f.subject.value}\n\n${f.message.value}`;
+  const copy = async (text, done) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast(`Invoice copied. Paste it into ${app}.`);
+      toast(done);
+      return true;
     } catch {
-      f.message.focus();
-      f.message.select();
-      toast('Press and hold the selected text, then tap Copy.');
+      toast('Could not copy. Press and hold to select the text instead.', true);
+      return false;
     }
-    markSent();
+  };
+
+  if ($('#copyTo')) $('#copyTo').onclick = () => copy(to, `${isSms ? 'Number' : 'Email address'} copied`);
+  $('#sendPdf').onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      if (await sharePDF(b, intro)) markSent();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      e.currentTarget.disabled = false;
+    }
+  };
+  $('#copyMsg').onclick = async () => {
+    const text = isSms ? f.message.value : `Subject: ${f.subject.value}\n\n${f.message.value}`;
+    if (await copy(text, `Text copied. Paste it into ${app}.`)) markSent();
   };
   link.onclick = () => markSent();
 
   dialog.onclose = () => { dialog.onclose = null; if (logged) route(); };
   dialog.showModal();
+}
+
+// Download button on the booking screen.
+async function savePDF(b) {
+  try {
+    await sharePDF(b, '');
+  } catch (err) {
+    toast(err.message, true);
+  }
 }
 
 // ---------- settings ----------

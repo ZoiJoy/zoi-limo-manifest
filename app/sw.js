@@ -1,6 +1,6 @@
 // Caches the app so it opens instantly and works with no signal. Bookings live in local storage, not here.
-const CACHE = 'reservations-v3';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'pricing.js', 'invoice.js', 'icon.svg', 'manifest.webmanifest'];
+const CACHE = 'reservations-v4';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'pricing.js', 'invoice.js', 'pdf.js', 'vendor/jspdf.umd.min.js', 'icon.svg', 'manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

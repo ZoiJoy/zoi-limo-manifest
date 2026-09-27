@@ -7,6 +7,9 @@ const dir = import.meta.dirname;
 const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
 const out = process.argv[2] || path.join(dir, 'dist', 'reservations.html');
 
+// Artifact pages may only load scripts from approved CDNs, so jsPDF comes from jsDelivr there.
+const JSPDF_VERSION = read('vendor/jspdf.umd.min.js').match(/Version (\d+\.\d+\.\d+)/)[1];
+
 const stripImports = (src) => src.replace(/^import[\s\S]*?from\s+'[^']+';\n/gm, '');
 const stripExports = (src) => src.replace(/^export (?=(const|let|function|async function|class) )/gm, '');
 
@@ -18,6 +21,7 @@ const storeModule = `const db = (() => {\n${stripExports(storeSrc)}\nreturn { ${
 const js = [
   stripExports(read('pricing.js')),
   stripExports(stripImports(read('invoice.js'))),
+  stripExports(stripImports(read('pdf.js'))),
   storeModule,
   stripImports(read('app.js')),
 ].join('\n\n');
@@ -34,6 +38,7 @@ const html = `<title>ZOI LIMO Bookings</title>
 <style>
 ${css}</style>
 ${body}
+<script src="https://cdn.jsdelivr.net/npm/jspdf@${JSPDF_VERSION}/dist/jspdf.umd.min.js"></script>
 <script type="module">
 ${js.replaceAll('</script', '<\\/script')}
 </script>

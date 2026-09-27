@@ -187,3 +187,11 @@ dialog h3 { margin: 0; font-size: 19px; }
   .invoice-frame { border: 0; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+.send-to { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.send-to small { display: block; font-size: 12px; color: var(--muted); }
+.send-to b { font-size: 17px; word-break: break-all; }
+.send-to .btn { min-height: 40px; }
+details { border-top: 1px solid var(--line); padding-top: 10px; }
+details summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; padding: 6px 0; }
+details[open] { display: grid; gap: 12px; }
