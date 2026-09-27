@@ -3,15 +3,15 @@
 A reservation and invoice app that runs **only on your phone**. You enter each booking for the customer, then send them the invoice by **text** or **email** from your own Messages or Mail app.
 
 - There's no server, account or login. Bookings are saved on your phone.
-- It doesn't take payments. The invoice tells the customer they can pay by **Cash, Venmo or Cash App**, and you mark what they paid.
+- It doesn't take payments. The invoice tells the customer they can pay by **Venmo, Zelle, Cash App, Apple Pay or Cash**, and you mark what they paid.
 - Once it's on your home screen, it works with no signal.
 
 ## Using it
 
 1. **+ New booking:** customer name, phone and email, service type, pickup and drop-off, flight, vehicle, chauffeur and price. The total updates as you type.
 2. **Save & invoice:** Messages opens with the full invoice already typed in. Tap send. You can also tap **Email invoice** to send it from your Mail app.
-3. **Mark paid:** pick Cash, Venmo or Cash App. The invoice then shows **Paid**. Send it again if the customer wants a receipt.
-4. **Settings:** your business info, your Venmo username and Cash App $cashtag (these show on every invoice), default gratuity and tax, vehicles, chauffeurs and message wording.
+3. **Mark paid:** pick Venmo, Zelle, Cash App, Apple Pay or Cash. The invoice then shows **Paid**. Send it again if the customer wants a receipt.
+4. **Settings:** your business info, your Venmo username, Zelle phone or email, Cash App $cashtag and Apple Pay number (these show on every invoice), default gratuity and tax, vehicles, chauffeurs and message wording.
 
 ## Put it on your phone
 

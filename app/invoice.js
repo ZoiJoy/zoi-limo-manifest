@@ -132,14 +132,18 @@ ${s.invoiceTerms ? `<h3>Terms</h3><div style="font-size:12px;color:#555;white-sp
 </div>`;
 }
 
-// Cash always; Venmo / Cash App when a handle is set in Settings.
+// Every accepted method, with the handle / number from Settings when one is set.
 export function paymentOptions(s = {}) {
-  const opts = ['Cash'];
-  const venmo = String(s.venmo || '').trim().replace(/^@/, '');
-  const cashApp = String(s.cashApp || '').trim().replace(/^\$/, '');
-  opts.push(venmo ? `Venmo: @${venmo}` : 'Venmo');
-  opts.push(cashApp ? `Cash App: $${cashApp}` : 'Cash App');
-  return opts;
+  const val = (k) => String(s[k] || '').trim();
+  const venmo = val('venmo').replace(/^@/, '');
+  const cashApp = val('cashApp').replace(/^\$/, '');
+  return [
+    venmo ? `Venmo: @${venmo}` : 'Venmo',
+    val('zelle') ? `Zelle: ${val('zelle')}` : 'Zelle',
+    cashApp ? `Cash App: $${cashApp}` : 'Cash App',
+    val('applePay') ? `Apple Pay: ${val('applePay')}` : 'Apple Pay',
+    'Cash',
+  ];
 }
 
 export function fillTemplate(tpl, b, s) {

@@ -492,10 +492,12 @@ function renderSettings() {
     </section>
     <section class="card">
       <h2>Payment options (shown on invoices)</h2>
-      <p class="hint" style="margin:0 0 10px">Invoices list Cash, Venmo and Cash App. Add your handles so customers know where to pay.</p>
+      <p class="hint" style="margin:0 0 10px">Invoices list Venmo, Zelle, Cash App, Apple Pay and Cash. Add your details so customers know where to send payment.</p>
       <div class="grid">
         <label>Venmo username<input name="venmo" value="${v('venmo')}" placeholder="@your-venmo" autocapitalize="off"></label>
+        <label>Zelle phone or email<input name="zelle" value="${v('zelle')}" placeholder="832-844-8660" autocapitalize="off"></label>
         <label>Cash App $cashtag<input name="cashApp" value="${v('cashApp')}" placeholder="$yourcashtag" autocapitalize="off"></label>
+        <label>Apple Pay phone number<input name="applePay" value="${v('applePay')}" type="tel" placeholder="832-844-8660"></label>
       </div>
     </section>
     <section class="card">

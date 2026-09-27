@@ -2,7 +2,7 @@
 
 const KEY = 'bcr.db.v1';
 
-export const PAYMENT_METHODS = ['Cash', 'Venmo', 'Cash App'];
+export const PAYMENT_METHODS = ['Venmo', 'Zelle', 'Cash App', 'Apple Pay', 'Cash'];
 
 export const DEFAULT_SETTINGS = {
   businessName: 'ZOI LIMO',
@@ -17,7 +17,9 @@ export const DEFAULT_SETTINGS = {
   vehicles: 'Cadillac Escalade, Chevrolet Suburban, Lincoln Navigator, Mercedes S-Class, Sprinter Van',
   drivers: 'Sadok Tsega',
   venmo: '',
+  zelle: '',
   cashApp: '',
+  applePay: '',
   invoiceTerms: 'Payment is due upon completion of service. Cancellations within 24 hours of pickup may be charged in full.',
   emailSubject: '{business} Invoice #{number}',
   emailMessage: 'Hi {firstName},\n\nThank you for booking with {business}. Your invoice is below.',

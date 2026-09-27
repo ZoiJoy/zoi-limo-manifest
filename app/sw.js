@@ -1,5 +1,5 @@
 // Caches the app so it opens instantly and works with no signal. Bookings live in local storage, not here.
-const CACHE = 'reservations-v2';
+const CACHE = 'reservations-v3';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'pricing.js', 'invoice.js', 'icon.svg', 'manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
