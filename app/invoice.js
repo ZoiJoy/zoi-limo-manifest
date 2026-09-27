@@ -49,7 +49,7 @@ function row(label, value) {
 }
 
 // Returns an HTML fragment (no <html>/<body>) with inline styles so it survives email clients.
-export function renderInvoiceHTML(b, s = {}, { link } = {}) {
+export function renderInvoiceHTML(b, s = {}) {
   const t = computeTotals(b.pricing);
   const c = b.customer || {};
   const trip = b.trip || {};
@@ -125,15 +125,24 @@ ${t.paid ? `<tr><td>Paid${b.pricing?.paymentMethod ? ` (${esc(b.pricing.paymentM
 <tr><td style="font-weight:700;font-size:18px;color:${statusColor}">Balance due</td><td class="amt" style="font-weight:700;font-size:18px;color:${statusColor}">${money(Math.max(t.balance, 0))}</td></tr>
 </table>
 
-${s.paymentInstructions ? `<h3>How to pay</h3><div style="font-size:14px;white-space:pre-line">${esc(s.paymentInstructions)}</div>` : ''}
+${status !== 'paid' && status !== 'cancelled' ? `<h3>Payment options</h3><div style="font-size:14px;line-height:1.7">${paymentOptions(s).map(esc).join('<br>')}</div>` : ''}
 ${s.invoiceTerms ? `<h3>Terms</h3><div style="font-size:12px;color:#555;white-space:pre-line">${esc(s.invoiceTerms)}</div>` : ''}
-${link ? `<p style="margin-top:22px;font-size:13px"><a href="${esc(link)}" style="color:#8a6d1f">View this invoice online</a></p>` : ''}
 <p style="margin-top:22px;font-size:13px;color:#555;text-align:center">Thank you for riding with ${esc(s.businessName || 'us')}.</p>
 </div>
 </div>`;
 }
 
-export function fillTemplate(tpl, b, s, link) {
+// Cash always; Venmo / Cash App when a handle is set in Settings.
+export function paymentOptions(s = {}) {
+  const opts = ['Cash'];
+  const venmo = String(s.venmo || '').trim().replace(/^@/, '');
+  const cashApp = String(s.cashApp || '').trim().replace(/^\$/, '');
+  opts.push(venmo ? `Venmo: @${venmo}` : 'Venmo');
+  opts.push(cashApp ? `Cash App: $${cashApp}` : 'Cash App');
+  return opts;
+}
+
+export function fillTemplate(tpl, b, s) {
   const t = computeTotals(b.pricing);
   const trip = b.trip || {};
   const vars = {
@@ -148,13 +157,12 @@ export function fillTemplate(tpl, b, s, link) {
     pickupTime: formatTime(trip.pickupTime),
     pickup: trip.pickup || '',
     dropoff: trip.dropoff || '',
-    link: link || '',
   };
   return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)).replace(/\n{3,}/g, '\n\n').trim();
 }
 
 // Plain-text invoice, used for SMS fallbacks and the text part of emails.
-export function renderInvoiceText(b, s = {}, { link } = {}) {
+export function renderInvoiceText(b, s = {}) {
   const t = computeTotals(b.pricing);
   const trip = b.trip || {};
   const L = [];
@@ -174,10 +182,11 @@ export function renderInvoiceText(b, s = {}, { link } = {}) {
   if (t.gratuity) L.push(`Gratuity (${t.gratuityPct}%): ${money(t.gratuity)}`);
   if (t.tax) L.push(`Tax (${t.taxPct}%): ${money(t.tax)}`);
   L.push(`TOTAL: ${money(t.total)}`);
-  if (t.paid) L.push(`Paid: -${money(t.paid)}`);
+  if (t.paid) L.push(`Paid${b.pricing?.paymentMethod ? ` (${b.pricing.paymentMethod})` : ''}: -${money(t.paid)}`);
   L.push(`BALANCE DUE: ${money(Math.max(t.balance, 0))}`);
-  if (s.paymentInstructions) L.push('', 'How to pay:', s.paymentInstructions);
-  if (link) L.push('', `View invoice: ${link}`);
+  const status = paymentStatus(b);
+  if (status !== 'paid' && status !== 'cancelled') L.push('', 'Payment options:', ...paymentOptions(s).map((x) => `• ${x}`));
+  else if (status === 'paid') L.push('', 'PAID IN FULL — thank you!');
   L.push('', [s.businessName, s.phone, s.email].filter(Boolean).join(' · '));
   return L.join('\n');
 }

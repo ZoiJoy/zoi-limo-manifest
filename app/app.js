@@ -3,26 +3,23 @@ import {
   esc, renderInvoiceHTML, renderInvoiceText, fillTemplate, customerName, formatDate, formatTime,
   paymentStatus, STATUS_LABELS, SERVICE_LABELS, TRIP_LABELS,
 } from './invoice.js';
+import * as db from './store.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const view = $('#view');
 const dialog = $('#dialog');
 
-const state = { config: null, settings: null, bookings: [], listTab: 'upcoming', search: '' };
+const state = { settings: null, bookings: [], listTab: 'upcoming', search: '' };
 
 // ---------- utilities ----------
-async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-    body: opts.body && typeof opts.body !== 'string' ? JSON.stringify(opts.body) : opts.body,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== '/api/login') { renderLogin(); throw new Error('Login required'); }
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { data, status: res.status });
-  return data;
-}
+const withTotals = (b) => b && { ...b, totals: computeTotals(b.pricing) };
+const loadBookings = () => (state.bookings = db.listBookings().map(withTotals));
+const findBooking = (id) => {
+  const b = withTotals(db.getBooking(id));
+  if (!b) throw new Error('Booking not found');
+  return b;
+};
 
 let toastTimer;
 function toast(msg, isError = false) {
@@ -60,58 +57,34 @@ function setActiveNav(name) {
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // ---------- router ----------
-async function route() {
+function route() {
   const hash = (location.hash.slice(1) || '/').split('?')[0];
   const [, page, id] = hash.split('/');
   window.scrollTo(0, 0);
   try {
-    if (!state.config) state.config = await api('/api/config');
-    if (state.config.authRequired && !state.config.authed) return renderLogin();
-    if (!state.settings) state.settings = await api('/api/settings');
+    state.settings = db.getSettings();
     $('#brand').textContent = state.settings.businessName || 'RESERVATIONS';
     document.title = `${state.settings.businessName || 'Black Car'} · Reservations`;
 
-    if (!page) return await renderList();
+    if (!page) return renderList();
     if (page === 'new') {
-      state.bookings = await api('/api/bookings');
+      loadBookings();
       return renderForm(null, id);
     }
-    if (page === 'edit') return renderForm(await api(`/api/bookings/${id}`));
-    if (page === 'b') return renderDetail(await api(`/api/bookings/${id}`));
+    if (page === 'edit') return renderForm(findBooking(id));
+    if (page === 'b') return renderDetail(findBooking(id));
     if (page === 'settings') return renderSettings();
     location.hash = '#/';
   } catch (err) {
-    if (err.message !== 'Login required') {
-      view.innerHTML = `<div class="card empty"><p>${esc(err.message)}</p><a class="btn" href="#/">Back to bookings</a></div>`;
-    }
+    view.innerHTML = `<div class="card empty"><p>${esc(err.message)}</p><a class="btn" href="#/">Back to bookings</a></div>`;
   }
 }
 window.addEventListener('hashchange', route);
 
-// ---------- login ----------
-function renderLogin() {
-  setActiveNav('');
-  view.innerHTML = `
-  <form class="card login" id="loginForm">
-    <h1>Sign in</h1>
-    <label>Password <input type="password" name="password" autocomplete="current-password" required autofocus></label>
-    <p></p>
-    <button class="btn primary block">Sign in</button>
-  </form>`;
-  $('#loginForm').onsubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api('/api/login', { method: 'POST', body: { password: e.target.password.value } });
-      state.config = null;
-      route();
-    } catch (err) { toast(err.message, true); }
-  };
-}
-
 // ---------- bookings list ----------
-async function renderList() {
+function renderList() {
   setActiveNav('list');
-  state.bookings = await api('/api/bookings');
+  loadBookings();
   view.innerHTML = `
   <div class="btn-row" style="margin-bottom:14px">
     <a href="#/new" class="btn primary block" style="font-size:17px;min-height:56px">+ New booking</a>
@@ -297,7 +270,7 @@ function renderForm(booking, duplicateFromId) {
       <div class="grid">
         ${moneyField('amountPaid', 'Amount paid / deposit', p.amountPaid)}
         <label>Method<select name="pricing.paymentMethod">
-          ${['', 'Cash', 'Credit card', 'Zelle', 'Cash App', 'Venmo', 'Corporate account', 'Check'].map((m) => `<option ${p.paymentMethod === m ? 'selected' : ''} value="${m}">${m || '—'}</option>`).join('')}
+          ${['', ...db.PAYMENT_METHODS].map((m) => `<option ${p.paymentMethod === m ? 'selected' : ''} value="${m}">${m || '—'}</option>`).join('')}
         </select></label>
       </div>
     </section>
@@ -365,8 +338,8 @@ function renderForm(booking, duplicateFromId) {
     btn.disabled = true;
     try {
       const saved = isNew
-        ? await api('/api/bookings', { method: 'POST', body: { ...d, status: 'booked' } })
-        : await api(`/api/bookings/${booking.id}`, { method: 'PUT', body: d });
+        ? db.createBooking({ ...d, status: 'booked' })
+        : db.updateBooking(booking.id, d);
       toast(isNew ? `Booking #${saved.number} saved` : 'Changes saved');
       location.hash = `#/b/${saved.id}${isNew ? '?send=1' : ''}`;
     } catch (err) {
@@ -380,14 +353,14 @@ function renderForm(booking, duplicateFromId) {
 function renderDetail(b) {
   setActiveNav('list');
   const s = state.settings;
-  const t = computeTotals(b.pricing);
-  const cfg = state.config;
+  const t = b.totals;
   const sent = b.sent || [];
+  const ps = paymentStatus(b);
   view.innerHTML = `
   <div class="no-print">
     <div class="btn-row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
       <a href="#/" class="btn">← Bookings</a>
-      <span class="badge ${paymentStatus(b)}">${b.status === 'completed' ? 'Completed · ' : ''}${STATUS_LABELS[paymentStatus(b)]}</span>
+      <span class="badge ${ps}">${b.status === 'completed' ? 'Completed · ' : ''}${STATUS_LABELS[ps]}</span>
     </div>
     <section class="card">
       <h2>Send invoice to ${esc(customerName(b))}</h2>
@@ -397,13 +370,12 @@ function renderDetail(b) {
       </div>
       ${!b.customer?.phone && !b.customer?.email ? `<p class="hint warn">Add a phone or email to this booking to send the invoice.</p>` : ''}
       ${sent.length ? `<p class="hint">Sent:</p><ul class="sent-log">${sent.slice().reverse().map((x) =>
-        `<li>${x.channel === 'sms' ? 'Text' : 'Email'} to ${esc(x.to)} · ${new Date(x.at).toLocaleString()}${x.via === 'device' ? ' (from this device)' : ''}</li>`).join('')}</ul>` : ''}
+        `<li>${x.channel === 'sms' ? 'Text' : 'Email'} to ${esc(x.to)} · ${new Date(x.at).toLocaleString()}</li>`).join('')}</ul>` : ''}
     </section>
     <div class="btn-grid" style="margin-bottom:14px">
-      ${t.balance > 0 && b.status !== 'cancelled' ? `<button class="btn" id="recordPay">💵 Record payment</button>` : ''}
+      ${t.balance > 0 && b.status !== 'cancelled' ? `<button class="btn" id="recordPay">💵 Mark paid</button>` : ''}
       <a class="btn" href="#/edit/${b.id}">✏️ Edit</a>
       <button class="btn" id="print">🖨️ Print / PDF</button>
-      <button class="btn" id="copyLink">🔗 Copy invoice link</button>
       ${b.status === 'booked' ? `<button class="btn" id="complete">✅ Mark completed</button>` : ''}
       <a class="btn" href="#/new/${b.id}">⧉ Book again</a>
       ${b.status !== 'cancelled' ? `<button class="btn danger" id="cancelBooking">Cancel ride</button>` : `<button class="btn" id="reinstate">Reinstate</button>`}
@@ -413,65 +385,61 @@ function renderDetail(b) {
   <div class="invoice-frame">${renderInvoiceHTML(b, s)}</div>`;
 
   $('#print').onclick = () => window.print();
-  $('#copyLink').onclick = async () => {
-    try { await navigator.clipboard.writeText(b.link); toast('Invoice link copied'); }
-    catch { prompt('Copy this link', b.link); }
-  };
-  const setStatus = (status, msg) => async () => {
-    await api(`/api/bookings/${b.id}`, { method: 'PUT', body: { status } });
+  const setStatus = (status, msg) => () => {
+    db.updateBooking(b.id, { status });
     toast(msg);
     route();
   };
   if ($('#complete')) $('#complete').onclick = setStatus('completed', 'Marked completed');
   if ($('#reinstate')) $('#reinstate').onclick = setStatus('booked', 'Booking reinstated');
-  if ($('#cancelBooking')) $('#cancelBooking').onclick = async () => { if (confirm('Cancel this ride?')) await setStatus('cancelled', 'Ride cancelled')(); };
-  $('#delete').onclick = async () => {
+  if ($('#cancelBooking')) $('#cancelBooking').onclick = () => { if (confirm('Cancel this ride?')) setStatus('cancelled', 'Ride cancelled')(); };
+  $('#delete').onclick = () => {
     if (!confirm(`Permanently delete booking #${b.number}?`)) return;
-    await api(`/api/bookings/${b.id}`, { method: 'DELETE' });
+    db.deleteBooking(b.id);
     toast('Booking deleted');
     location.hash = '#/';
   };
   if ($('#recordPay')) $('#recordPay').onclick = () => openPaymentDialog(b, t);
-  $('#sendSms').onclick = () => openSendDialog(b, 'sms', cfg.smsEnabled);
-  $('#sendEmail').onclick = () => openSendDialog(b, 'email', cfg.emailEnabled);
+  $('#sendSms').onclick = () => openSendDialog(b, 'sms');
+  $('#sendEmail').onclick = () => openSendDialog(b, 'email');
 
   // Right after a new booking is saved, jump straight to sending it.
   if (location.hash.includes('?send=1')) {
     history.replaceState(null, '', `#/b/${b.id}`);
-    if (b.customer?.phone) openSendDialog(b, 'sms', cfg.smsEnabled);
-    else if (b.customer?.email) openSendDialog(b, 'email', cfg.emailEnabled);
+    if (b.customer?.phone) openSendDialog(b, 'sms');
+    else if (b.customer?.email) openSendDialog(b, 'email');
   }
 }
 
 function openPaymentDialog(b, t) {
   dialog.innerHTML = `
   <form method="dialog" id="payForm">
-    <h3>Record payment</h3>
+    <h3>Payment received</h3>
     <label class="money">Amount<input name="amount" type="number" inputmode="decimal" step="0.01" min="0.01" value="${Math.max(t.balance, 0).toFixed(2)}" required></label>
-    <label>Method<select name="method">${['Cash', 'Credit card', 'Zelle', 'Cash App', 'Venmo', 'Corporate account', 'Check']
-      .map((m) => `<option ${b.pricing?.paymentMethod === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
-    <div class="btn-row"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="ok" style="flex:1">Save payment</button></div>
+    <div class="chips">${db.PAYMENT_METHODS.map((m, i) =>
+      `<label><input type="radio" name="method" value="${m}" ${(b.pricing?.paymentMethod ? b.pricing.paymentMethod === m : i === 0) ? 'checked' : ''}><span>${m}</span></label>`).join('')}</div>
+    <div class="btn-row"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="ok" style="flex:1">Save</button></div>
   </form>`;
   dialog.showModal();
-  $('#payForm').onsubmit = async (e) => {
+  $('#payForm').onsubmit = (e) => {
     if (e.submitter?.value !== 'ok') return;
     e.preventDefault();
     const amount = parseFloat(e.target.amount.value) || 0;
-    const pricing = { ...b.pricing, amountPaid: String(Math.round(((parseFloat(b.pricing?.amountPaid) || 0) + amount) * 100) / 100), paymentMethod: e.target.method.value };
-    await api(`/api/bookings/${b.id}`, { method: 'PUT', body: { pricing } });
+    const paid = Math.round(((parseFloat(b.pricing?.amountPaid) || 0) + amount) * 100) / 100;
+    db.updateBooking(b.id, { pricing: { ...b.pricing, amountPaid: String(paid), paymentMethod: e.target.method.value } });
     dialog.close();
-    toast(`${money(amount)} payment recorded`);
+    toast(`${money(amount)} ${e.target.method.value} payment saved`);
     route();
   };
 }
 
-function openSendDialog(b, channel, serverEnabled) {
+function openSendDialog(b, channel) {
   const s = state.settings;
   const isSms = channel === 'sms';
   const to = isSms ? b.customer?.phone : b.customer?.email;
-  const message = isSms ? fillTemplate(s.smsTemplate, b, s, b.link) : fillTemplate(s.emailMessage, b, s, b.link);
-  const subject = fillTemplate(s.emailSubject, b, s, b.link);
-  const isLocal = /^https?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(b.link);
+  const intro = fillTemplate(isSms ? s.smsMessage : s.emailMessage, b, s);
+  const message = `${intro ? `${intro}\n\n` : ''}${renderInvoiceText(b, s)}`;
+  const subject = fillTemplate(s.emailSubject, b, s);
 
   dialog.innerHTML = `
   <form method="dialog" id="sendForm">
@@ -479,45 +447,25 @@ function openSendDialog(b, channel, serverEnabled) {
     <label>${isSms ? 'Mobile number' : 'Email address'}
       <input name="to" type="${isSms ? 'tel' : 'email'}" value="${esc(to)}" required></label>
     ${isSms ? '' : `<label>Subject<input name="subject" value="${esc(subject)}"></label>`}
-    <label>Message<textarea name="message" rows="${isSms ? 6 : 4}">${esc(message)}</textarea></label>
-    <p class="hint">${serverEnabled
-      ? (isSms ? 'Sent directly from your business number.' : 'The full invoice is attached below your message.')
-      : `Opens ${isSms ? 'Messages' : 'your mail app'} on this device with the invoice filled in. Just tap send.`}</p>
-    ${isLocal ? `<p class="hint warn">The invoice link points to a private address (${esc(new URL(b.link).host)}), so the customer can't open it. Set PUBLIC_URL when you host the app online.</p>` : ''}
-    <div class="btn-row"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="ok" style="flex:1">${serverEnabled ? 'Send now' : `Open ${isSms ? 'Messages' : 'Mail'}`}</button></div>
+    <label>Message<textarea name="message" rows="10">${esc(message)}</textarea></label>
+    <p class="hint">Opens ${isSms ? 'Messages' : 'your Mail app'} with this invoice filled in. Just tap send.</p>
+    <div class="btn-row"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="ok" style="flex:1">Open ${isSms ? 'Messages' : 'Mail'}</button></div>
   </form>`;
   dialog.showModal();
 
-  $('#sendForm').onsubmit = async (e) => {
+  $('#sendForm').onsubmit = (e) => {
     if (e.submitter?.value !== 'ok') return;
     e.preventDefault();
     const f = e.target;
-    const payload = { channel, to: f.to.value.trim(), message: f.message.value, subject: f.subject?.value };
-    if (!payload.to) return toast('Recipient is required', true);
-    const btn = e.submitter;
-    btn.disabled = true;
-
-    if (serverEnabled) {
-      try {
-        await api(`/api/bookings/${b.id}/send`, { method: 'POST', body: payload });
-        dialog.close();
-        toast(isSms ? 'Invoice texted ✓' : 'Invoice emailed ✓');
-        return route();
-      } catch (err) {
-        btn.disabled = false;
-        if (!err.data?.fallback) return toast(err.message, true);
-      }
-    }
-
-    // Device fallback: hand off to the phone's Messages / Mail app.
+    const recipient = f.to.value.trim();
+    if (!recipient) return toast('Recipient is required', true);
     if (isSms) {
-      const num = payload.to.replace(/[^\d+]/g, '');
-      location.href = `sms:${num}${isIOS ? '&' : '?'}body=${encodeURIComponent(payload.message)}`;
+      const num = recipient.replace(/[^\d+]/g, '');
+      location.href = `sms:${num}${isIOS ? '&' : '?'}body=${encodeURIComponent(f.message.value)}`;
     } else {
-      const body = `${payload.message}\n\n${renderInvoiceText(b, s, { link: b.link })}`;
-      location.href = `mailto:${encodeURIComponent(payload.to)}?subject=${encodeURIComponent(payload.subject || '')}&body=${encodeURIComponent(body)}`;
+      location.href = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(f.subject.value)}&body=${encodeURIComponent(f.message.value)}`;
     }
-    api(`/api/bookings/${b.id}/send`, { method: 'POST', body: { channel: `device-${channel}`, to: payload.to } }).catch(() => {});
+    db.logSend(b.id, channel, recipient);
     dialog.close();
     setTimeout(route, 800);
   };
@@ -527,7 +475,6 @@ function openSendDialog(b, channel, serverEnabled) {
 function renderSettings() {
   setActiveNav('settings');
   const s = state.settings;
-  const cfg = state.config;
   const v = (k) => esc(s[k] ?? '');
   view.innerHTML = `
   <h1>Settings</h1>
@@ -544,6 +491,14 @@ function renderSettings() {
       </div>
     </section>
     <section class="card">
+      <h2>Payment options (shown on invoices)</h2>
+      <p class="hint" style="margin:0 0 10px">Invoices list Cash, Venmo and Cash App. Add your handles so customers know where to pay.</p>
+      <div class="grid">
+        <label>Venmo username<input name="venmo" value="${v('venmo')}" placeholder="@your-venmo" autocapitalize="off"></label>
+        <label>Cash App $cashtag<input name="cashApp" value="${v('cashApp')}" placeholder="$yourcashtag" autocapitalize="off"></label>
+      </div>
+    </section>
+    <section class="card">
       <h2>Defaults</h2>
       <div class="grid">
         <label class="pct">Default gratuity<input name="defaultGratuityPct" type="number" step="0.5" min="0" value="${v('defaultGratuityPct')}"></label>
@@ -551,49 +506,61 @@ function renderSettings() {
         <label>Invoice number prefix<input name="numberPrefix" value="${v('numberPrefix')}"></label>
         <label class="span-all">Vehicles (comma separated)<input name="vehicles" value="${v('vehicles')}"></label>
         <label class="span-all">Chauffeurs (comma separated)<input name="drivers" value="${v('drivers')}"></label>
+        <label class="span-all">Invoice terms<textarea name="invoiceTerms">${v('invoiceTerms')}</textarea></label>
       </div>
     </section>
     <section class="card">
-      <h2>Invoice text</h2>
+      <h2>Message greeting</h2>
+      <p class="hint" style="margin:0 0 10px">Goes above the invoice. Placeholders: {firstName} {name} {number} {business} {phone} {total} {balance} {pickupDate} {pickupTime}</p>
       <div class="grid">
-        <label class="span-all">How to pay (Zelle, Cash App, card link…)<textarea name="paymentInstructions" placeholder="Zelle: 832-844-8660">${v('paymentInstructions')}</textarea></label>
-        <label class="span-all">Terms<textarea name="invoiceTerms">${v('invoiceTerms')}</textarea></label>
-      </div>
-    </section>
-    <section class="card">
-      <h2>Message templates</h2>
-      <p class="hint" style="margin:0 0 10px">Placeholders: {firstName} {name} {number} {business} {phone} {total} {balance} {pickupDate} {pickupTime} {pickup} {dropoff} {link}</p>
-      <div class="grid">
-        <label class="span-all">Text message<textarea name="smsTemplate" rows="4">${v('smsTemplate')}</textarea></label>
+        <label class="span-all">Text message<textarea name="smsMessage" rows="3">${v('smsMessage')}</textarea></label>
         <label class="span-all">Email subject<input name="emailSubject" value="${v('emailSubject')}"></label>
-        <label class="span-all">Email message<textarea name="emailMessage" rows="4">${v('emailMessage')}</textarea></label>
+        <label class="span-all">Email message<textarea name="emailMessage" rows="3">${v('emailMessage')}</textarea></label>
       </div>
-    </section>
-    <section class="card">
-      <h2>Delivery</h2>
-      <p style="margin:0">Text: <b>${cfg.smsEnabled ? 'Sent automatically (Twilio)' : "Uses this device's Messages app"}</b><br>
-      Email: <b>${cfg.emailEnabled ? 'Sent automatically (SMTP)' : "Uses this device's mail app"}</b></p>
-      <p class="hint">To send automatically, add Twilio / SMTP details to the server's <code>.env</code> file (see README).</p>
     </section>
     <button class="btn primary block">Save settings</button>
-    ${cfg.authRequired ? `<button type="button" class="btn block" id="logout" style="margin-top:10px">Sign out</button>` : ''}
-  </form>`;
+  </form>
+  <section class="card" style="margin-top:14px">
+    <h2>Backup</h2>
+    <p class="hint" style="margin:0 0 10px">Bookings are saved only on this phone. Export a backup now and then (save it to Files, iCloud or Google Drive) so you don't lose them if the phone is lost or the browser data is cleared.</p>
+    <div class="btn-grid">
+      <button class="btn" id="exportBtn">⬇️ Export backup</button>
+      <button class="btn" id="importBtn">⬆️ Restore backup</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </section>`;
 
-  $('#settingsForm').onsubmit = async (e) => {
+  $('#settingsForm').onsubmit = (e) => {
     e.preventDefault();
-    state.settings = await api('/api/settings', { method: 'PUT', body: readForm(e.target) });
+    state.settings = db.saveSettings(readForm(e.target));
     $('#brand').textContent = state.settings.businessName || 'RESERVATIONS';
     toast('Settings saved');
   };
-  if ($('#logout')) $('#logout').onclick = async () => {
-    await api('/api/logout', { method: 'POST' });
-    state.config = null; state.settings = null;
-    route();
+  $('#exportBtn').onclick = async () => {
+    const name = `reservations-backup-${todayISO()}.json`;
+    const file = new File([db.exportBackup()], name, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: name }); return; } catch (err) { if (err.name === 'AbortError') return; }
+    }
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: name });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('#importBtn').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (!confirm('Restoring replaces all bookings and settings on this phone with the backup. Continue?')) return;
+    try {
+      const n = db.importBackup(await f.text());
+      toast(`Restored ${n} booking${n === 1 ? '' : 's'}`);
+      route();
+    } catch (err) { toast(err.message, true); }
   };
 }
 
 // Close dialogs by tapping the backdrop.
 dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
 route();
