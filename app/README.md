@@ -27,7 +27,7 @@ The app has to be opened from a web address once. After that it lives on your ho
 
 1. On GitHub, open the repository's **Settings → Pages** and set **Source** to **GitHub Actions**.
 2. Merge this branch into `main`. The "Publish app" action puts the app at
-   `https://<your-github-username>.github.io/zoi-limo-manifest/app/`
+   https://zoijoy.github.io/zoi-limo-manifest/
 3. Open that address on your phone:
    - **iPhone (Safari):** Share button → **Add to Home Screen**
    - **Android (Chrome):** ⋮ menu → **Add to Home screen** / **Install app**
