@@ -12,12 +12,20 @@
   --bad: #b42318;
   --radius: 12px;
   --tap: 48px;
+  --primary-bg: #111111;
+  --primary-fg: #d4b25a;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #0d0d0d; --card: #1a1a1a; --ink: #f0ede6; --muted: #a39e94; --line: #2e2c28;
-    --ok: #4cc085; --warn: #e3b341; --bad: #f47067;
+    --ok: #4cc085; --warn: #e3b341; --bad: #f47067; --primary-bg: #d4b25a; --primary-fg: #111111;
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d0d; --card: #1a1a1a; --ink: #f0ede6; --muted: #a39e94; --line: #2e2c28;
+  --ok: #4cc085; --warn: #e3b341; --bad: #f47067; --primary-bg: #d4b25a; --primary-fg: #111111;
 }
 
 * { box-sizing: border-box; }
@@ -57,8 +65,8 @@ h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: v
   font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer; white-space: nowrap;
 }
 .btn:active { transform: translateY(1px); }
-.btn.primary { background: var(--black); color: var(--gold-soft); border-color: var(--black); }
-@media (prefers-color-scheme: dark) { .btn.primary { background: var(--gold-soft); color: #111; border-color: var(--gold-soft); } }
+.btn.primary { background: var(--primary-bg); color: var(--primary-fg); border-color: var(--primary-bg); }
+.btn.primary.danger-fill { background: var(--bad); border-color: var(--bad); color: #fff; }
 .btn.danger { color: var(--bad); }
 .btn.block { width: 100%; }
 .btn[disabled] { opacity: .5; pointer-events: none; }
@@ -126,7 +134,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold-soft);
   border: 1px solid var(--line); background: var(--card); color: var(--ink);
   border-radius: 20px; padding: 8px 14px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
-.tabs button.active { background: var(--black); color: var(--gold-soft); border-color: var(--black); }
+.tabs button.active { background: var(--primary-bg); color: var(--primary-fg); border-color: var(--primary-bg); }
 .booking-item {
   display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; text-decoration: none;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);

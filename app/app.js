@@ -10,7 +10,8 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const view = $('#view');
 const dialog = $('#dialog');
 
-const state = { settings: null, bookings: [], listTab: 'upcoming', search: '' };
+const state = { path: '/', query: '', where: 'phone', settings: null, bookings: [], listTab: 'upcoming', search: '' };
+const inClaude = typeof window.claude?.use === 'function';
 
 // ---------- utilities ----------
 const withTotals = (b) => b && { ...b, totals: computeTotals(b.pricing) };
@@ -20,6 +21,20 @@ const findBooking = (id) => {
   if (!b) throw new Error('Booking not found');
   return b;
 };
+
+// In-page yes/no dialog. Resolves true when the action button is tapped.
+function ask(message, action) {
+  return new Promise((resolve) => {
+    dialog.innerHTML = `
+    <form method="dialog" id="askForm">
+      <h3>${esc(message)}</h3>
+      <div class="btn-row"><button class="btn" value="no">Keep</button><button class="btn primary danger-fill" value="yes" style="flex:1">${esc(action)}</button></div>
+    </form>`;
+    dialog.onclose = () => { dialog.onclose = null; resolve(dialog.returnValue === 'yes'); };
+    dialog.returnValue = '';
+    dialog.showModal();
+  });
+}
 
 let toastTimer;
 function toast(msg, isError = false) {
@@ -58,7 +73,8 @@ const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform 
 
 // ---------- router ----------
 function route() {
-  const hash = (location.hash.slice(1) || '/').split('?')[0];
+  const [hash, query] = state.path.split('?');
+  state.query = query || '';
   const [, page, id] = hash.split('/');
   window.scrollTo(0, 0);
   try {
@@ -74,12 +90,22 @@ function route() {
     if (page === 'edit') return renderForm(findBooking(id));
     if (page === 'b') return renderDetail(findBooking(id));
     if (page === 'settings') return renderSettings();
-    location.hash = '#/';
+    go('/');
   } catch (err) {
     view.innerHTML = `<div class="card empty"><p>${esc(err.message)}</p><a class="btn" href="#/">Back to bookings</a></div>`;
   }
 }
-window.addEventListener('hashchange', route);
+// Navigation stays inside the page (an artifact frame doesn't allow changing the address).
+function go(path) {
+  state.path = path;
+  route();
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#/"]');
+  if (!a) return;
+  e.preventDefault();
+  go(a.getAttribute('href').slice(1));
+});
 
 // ---------- bookings list ----------
 function renderList() {
@@ -324,7 +350,7 @@ function renderForm(booking, duplicateFromId) {
   };
 
   const cancel = $('#cancelEdit');
-  if (cancel) cancel.onclick = () => (location.hash = `#/b/${booking.id}`);
+  if (cancel) cancel.onclick = () => go(`/b/${booking.id}`);
 
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -341,7 +367,7 @@ function renderForm(booking, duplicateFromId) {
         ? db.createBooking({ ...d, status: 'booked' })
         : db.updateBooking(booking.id, d);
       toast(isNew ? `Booking #${saved.number} saved` : 'Changes saved');
-      location.hash = `#/b/${saved.id}${isNew ? '?send=1' : ''}`;
+      go(`/b/${saved.id}${isNew ? '?send=1' : ''}`);
     } catch (err) {
       btn.disabled = false;
       toast(err.message, true);
@@ -375,7 +401,7 @@ function renderDetail(b) {
     <div class="btn-grid" style="margin-bottom:14px">
       ${t.balance > 0 && b.status !== 'cancelled' ? `<button class="btn" id="recordPay">💵 Mark paid</button>` : ''}
       <a class="btn" href="#/edit/${b.id}">✏️ Edit</a>
-      <button class="btn" id="print">🖨️ Print / PDF</button>
+      ${inClaude ? '' : `<button class="btn" id="print">🖨️ Print / PDF</button>`}
       ${b.status === 'booked' ? `<button class="btn" id="complete">✅ Mark completed</button>` : ''}
       <a class="btn" href="#/new/${b.id}">⧉ Book again</a>
       ${b.status !== 'cancelled' ? `<button class="btn danger" id="cancelBooking">Cancel ride</button>` : `<button class="btn" id="reinstate">Reinstate</button>`}
@@ -384,7 +410,7 @@ function renderDetail(b) {
   </div>
   <div class="invoice-frame">${renderInvoiceHTML(b, s)}</div>`;
 
-  $('#print').onclick = () => window.print();
+  if ($('#print')) $('#print').onclick = () => window.print();
   const setStatus = (status, msg) => () => {
     db.updateBooking(b.id, { status });
     toast(msg);
@@ -392,20 +418,20 @@ function renderDetail(b) {
   };
   if ($('#complete')) $('#complete').onclick = setStatus('completed', 'Marked completed');
   if ($('#reinstate')) $('#reinstate').onclick = setStatus('booked', 'Booking reinstated');
-  if ($('#cancelBooking')) $('#cancelBooking').onclick = () => { if (confirm('Cancel this ride?')) setStatus('cancelled', 'Ride cancelled')(); };
-  $('#delete').onclick = () => {
-    if (!confirm(`Permanently delete booking #${b.number}?`)) return;
+  if ($('#cancelBooking')) $('#cancelBooking').onclick = async () => { if (await ask('Cancel this ride?', 'Cancel ride')) setStatus('cancelled', 'Ride cancelled')(); };
+  $('#delete').onclick = async () => {
+    if (!(await ask(`Delete booking #${b.number}? This can't be undone.`, 'Delete'))) return;
     db.deleteBooking(b.id);
     toast('Booking deleted');
-    location.hash = '#/';
+    go('/');
   };
   if ($('#recordPay')) $('#recordPay').onclick = () => openPaymentDialog(b, t);
   $('#sendSms').onclick = () => openSendDialog(b, 'sms');
   $('#sendEmail').onclick = () => openSendDialog(b, 'email');
 
   // Right after a new booking is saved, jump straight to sending it.
-  if (location.hash.includes('?send=1')) {
-    history.replaceState(null, '', `#/b/${b.id}`);
+  if (state.query === 'send=1') {
+    state.path = `/b/${b.id}`;
     if (b.customer?.phone) openSendDialog(b, 'sms');
     else if (b.customer?.email) openSendDialog(b, 'email');
   }
@@ -436,39 +462,62 @@ function openPaymentDialog(b, t) {
 function openSendDialog(b, channel) {
   const s = state.settings;
   const isSms = channel === 'sms';
-  const to = isSms ? b.customer?.phone : b.customer?.email;
+  const to = (isSms ? b.customer?.phone : b.customer?.email) || '';
   const intro = fillTemplate(isSms ? s.smsMessage : s.emailMessage, b, s);
   const message = `${intro ? `${intro}\n\n` : ''}${renderInvoiceText(b, s)}`;
   const subject = fillTemplate(s.emailSubject, b, s);
+  const app = isSms ? 'Messages' : 'Mail';
 
   dialog.innerHTML = `
   <form method="dialog" id="sendForm">
     <h3>${isSms ? 'Text' : 'Email'} invoice #${esc(b.number)}</h3>
     <label>${isSms ? 'Mobile number' : 'Email address'}
-      <input name="to" type="${isSms ? 'tel' : 'email'}" value="${esc(to)}" required></label>
-    ${isSms ? '' : `<label>Subject<input name="subject" value="${esc(subject)}"></label>`}
-    <label>Message<textarea name="message" rows="10">${esc(message)}</textarea></label>
-    <p class="hint">Opens ${isSms ? 'Messages' : 'your Mail app'} with this invoice filled in. Just tap send.</p>
-    <div class="btn-row"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="ok" style="flex:1">Open ${isSms ? 'Messages' : 'Mail'}</button></div>
+      <input id="sendTo" name="to" type="${isSms ? 'tel' : 'email'}" value="${esc(to)}"></label>
+    ${isSms ? '' : `<label>Subject<input id="sendSubject" name="subject" value="${esc(subject)}"></label>`}
+    <label>Message<textarea id="sendMessage" name="message" rows="10">${esc(message)}</textarea></label>
+    <div class="btn-grid">
+      <button type="button" class="btn primary" id="copyMsg">📋 Copy invoice</button>
+      <a class="btn primary" id="openApp" href="#">Open ${app}</a>
+    </div>
+    <p class="hint">Tap <b>Copy invoice</b>, open ${app}, then paste it into your message to ${esc(to || 'the customer')}.${inClaude ? '' : ` Or tap <b>Open ${app}</b> to start the message with the invoice already filled in.`}</p>
+    <button class="btn block" value="close">Done</button>
   </form>`;
-  dialog.showModal();
 
-  $('#sendForm').onsubmit = (e) => {
-    if (e.submitter?.value !== 'ok') return;
-    e.preventDefault();
-    const f = e.target;
+  const f = $('#sendForm');
+  const link = $('#openApp');
+  const refreshLink = () => {
     const recipient = f.to.value.trim();
-    if (!recipient) return toast('Recipient is required', true);
-    if (isSms) {
-      const num = recipient.replace(/[^\d+]/g, '');
-      location.href = `sms:${num}${isIOS ? '&' : '?'}body=${encodeURIComponent(f.message.value)}`;
-    } else {
-      location.href = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(f.subject.value)}&body=${encodeURIComponent(f.message.value)}`;
-    }
-    db.logSend(b.id, channel, recipient);
-    dialog.close();
-    setTimeout(route, 800);
+    const body = encodeURIComponent(f.message.value);
+    link.href = isSms
+      ? `sms:${recipient.replace(/[^\d+]/g, '')}${isIOS ? '&' : '?'}body=${body}`
+      : `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(f.subject.value)}&body=${body}`;
   };
+  f.addEventListener('input', refreshLink);
+  refreshLink();
+
+  let logged = false;
+  const markSent = () => {
+    if (logged) return;
+    logged = true;
+    db.logSend(b.id, channel, f.to.value.trim() || '(not entered)');
+  };
+
+  $('#copyMsg').onclick = async () => {
+    const text = isSms ? f.message.value : `Subject: ${f.subject.value}\n\n${f.message.value}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`Invoice copied. Paste it into ${app}.`);
+    } catch {
+      f.message.focus();
+      f.message.select();
+      toast('Press and hold the selected text, then tap Copy.');
+    }
+    markSent();
+  };
+  link.onclick = () => markSent();
+
+  dialog.onclose = () => { dialog.onclose = null; if (logged) route(); };
+  dialog.showModal();
 }
 
 // ---------- settings ----------
@@ -522,6 +571,11 @@ function renderSettings() {
     </section>
     <button class="btn primary block">Save settings</button>
   </form>
+  ${state.where === 'account' ? `
+  <section class="card" style="margin-top:14px">
+    <h2>Where bookings are saved</h2>
+    <p class="hint" style="margin:0">Privately in your Claude account. Only you can see them, and they are there on any phone where you open this page signed in.</p>
+  </section>` : `
   <section class="card" style="margin-top:14px">
     <h2>Backup</h2>
     <p class="hint" style="margin:0 0 10px">Bookings are saved only on this phone. Export a backup now and then (save it to Files, iCloud or Google Drive) so you don't lose them if the phone is lost or the browser data is cleared.</p>
@@ -530,7 +584,7 @@ function renderSettings() {
       <button class="btn" id="importBtn">⬆️ Restore backup</button>
     </div>
     <input type="file" id="importFile" accept="application/json,.json" hidden>
-  </section>`;
+  </section>`}`;
 
   $('#settingsForm').onsubmit = (e) => {
     e.preventDefault();
@@ -538,7 +592,7 @@ function renderSettings() {
     $('#brand').textContent = state.settings.businessName || 'RESERVATIONS';
     toast('Settings saved');
   };
-  $('#exportBtn').onclick = async () => {
+  if ($('#exportBtn')) $('#exportBtn').onclick = async () => {
     const name = `reservations-backup-${todayISO()}.json`;
     const file = new File([db.exportBackup()], name, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] })) {
@@ -548,11 +602,11 @@ function renderSettings() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
-  $('#importBtn').onclick = () => $('#importFile').click();
-  $('#importFile').onchange = async (e) => {
+  if ($('#importBtn')) $('#importBtn').onclick = () => $('#importFile').click();
+  if ($('#importFile')) $('#importFile').onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    if (!confirm('Restoring replaces all bookings and settings on this phone with the backup. Continue?')) return;
+    if (!(await ask('Restoring replaces all bookings and settings with the ones in the backup file.', 'Restore'))) { e.target.value = ''; return; }
     try {
       const n = db.importBackup(await f.text());
       toast(`Restored ${n} booking${n === 1 ? '' : 's'}`);
@@ -564,5 +618,10 @@ function renderSettings() {
 // Close dialogs by tapping the backdrop.
 dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
 
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
-route();
+if (!inClaude && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+view.innerHTML = '<div class="empty">Loading bookings…</div>';
+db.init({ onSaveError: (msg) => toast(msg, true) }).then((where) => {
+  state.where = where;
+  route();
+});

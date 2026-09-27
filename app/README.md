@@ -13,7 +13,15 @@ A reservation and invoice app that runs **only on your phone**. You enter each b
 3. **Mark paid:** pick Venmo, Zelle, Cash App, Apple Pay or Cash. The invoice then shows **Paid**. Send it again if the customer wants a receipt.
 4. **Settings:** your business info, your Venmo username, Zelle phone or email, Cash App $cashtag and Apple Pay number (these show on every invoice), default gratuity and tax, vehicles, chauffeurs and message wording.
 
-## Put it on your phone
+## Open it in Claude (easiest)
+
+The app is published as a private page on your Claude account. Open the link on your phone while signed in to Claude.
+Bookings are saved privately in your Claude account, and only you can see them.
+Inside Claude, tap **Copy invoice** and paste it into Messages or Mail. The **Open Messages** button may not work there.
+
+To update that page after changing the code, run `node build-artifact.mjs`. It creates one self-contained `dist/reservations.html`, and that file gets published.
+
+## Or put it on your phone from GitHub
 
 The app has to be opened from a web address once. After that it lives on your home screen.
 
