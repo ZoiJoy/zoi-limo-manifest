@@ -1,0 +1,17 @@
+{
+  "name": "black-car-reservations",
+  "version": "1.0.0",
+  "description": "Stand-alone black car reservation and invoicing app: take bookings on the spot and text or email the invoice.",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20.12" },
+  "optionalDependencies": {
+    "nodemailer": "^10.0.10"
+  }
+}
