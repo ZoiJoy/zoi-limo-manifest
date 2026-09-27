@@ -1,0 +1,11 @@
+{
+  "name": "black-car-reservations",
+  "version": "2.0.0",
+  "description": "Phone-only black car reservation and invoicing app. Text or email the customer's invoice from your phone.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test"
+  }
+}
